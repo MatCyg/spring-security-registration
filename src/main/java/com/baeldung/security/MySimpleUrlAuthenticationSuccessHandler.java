@@ -82,17 +82,22 @@ public class MySimpleUrlAuthenticationSuccessHandler implements AuthenticationSu
     protected String determineTargetUrl(final Authentication authentication) {
         boolean isUser = false;
         boolean isAdmin = false;
+        boolean isManager = false;
         final Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
         for (final GrantedAuthority grantedAuthority : authorities) {
-            if (grantedAuthority.getAuthority().equals("READ_PRIVILEGE")) {
+            String authority = grantedAuthority.getAuthority();
+            if ("ROLE_USER".equals(authority)) {
                 isUser = true;
-            } else if (grantedAuthority.getAuthority().equals("WRITE_PRIVILEGE")) {
+                break;
+            } else if ("ROLE_MANAGER".equals(authority)) {
+                isManager = true;
+                break;
+            } else if ("ROLE_ADMIN".equals(authority)) {
                 isAdmin = true;
-                isUser = false;
                 break;
             }
         }
-        if (isUser) {
+        if (isUser || isManager) {
         	 String username;
              if (authentication.getPrincipal() instanceof User) {
              	username = ((User)authentication.getPrincipal()).getEmail();
