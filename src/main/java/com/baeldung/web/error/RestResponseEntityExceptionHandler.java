@@ -1,5 +1,6 @@
 package com.baeldung.web.error;
 
+import com.baeldung.persistence.model.User;
 import com.baeldung.web.util.GenericResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
@@ -7,13 +8,21 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mail.MailAuthenticationException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import org.springframework.web.servlet.view.RedirectView;
+
+import java.util.Optional;
 
 @ControllerAdvice
 public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionHandler {
@@ -42,6 +51,24 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
         final BindingResult result = ex.getBindingResult();
         final GenericResponse bodyOfResponse = new GenericResponse(result.getAllErrors(), "Invalid" + result.getObjectName());
         return handleExceptionInternal(ex, bodyOfResponse, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+    }
+
+    @ExceptionHandler({ AccessDeniedException.class })
+    public RedirectView handleAccessDeniedException(final ServletWebRequest request) {
+        final String requestUri = request.getRequest().getRequestURI();
+        final String message = String.format("User '%s' attempted to access unauthorized URL '%s'", getUserName(), requestUri);
+        logger.warn(message);
+
+        return new RedirectView("/accessDenied");
+    }
+
+    private static String getUserName() {
+        return Optional.of(SecurityContextHolder.getContext())
+                .map(SecurityContext::getAuthentication)
+                .map(Authentication::getPrincipal)
+                .map(User.class::cast)
+                .map(User::getFirstName)
+                .orElse("N/A");
     }
 
     @ExceptionHandler({ InvalidOldPasswordException.class })
